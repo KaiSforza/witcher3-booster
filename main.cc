@@ -337,7 +337,7 @@ DWORD WINAPI InitializeHook(void* arguments) {
   // B8").count(1).get(0).extract<FileManager*>(3);
 
   game_hook = new utils::VtableHook(*global_game);
-  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 133);
+  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 134);
 
   // auto exe_path = GetExecutablePath();
   // exe_path += L"\\scriptplugins\\";
