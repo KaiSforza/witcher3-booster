@@ -9,6 +9,10 @@
 
 #include "Logger.h"
 
+#include "utils.h"
+
+const char* SOFTWARE_VERSION = "1.21";
+
 HANDLE thread = nullptr;
 utils::VtableHook* game_hook = nullptr;
 void** global_debug_console = nullptr;
@@ -32,9 +36,16 @@ bool OnViewportInputDebugAlwaysHook(void* thisptr,
   if ((*global_game)->ProcessFreeCameraInput(input_key, input_action, tick))
     return true;
 
-  if (input_key == IK_F2 && input_action == IACT_Release) {
+  if (input_key == IK_F2 && input_action == IACT_Release) 
+  {
     input_key = IK_Tilde;
     input_action = IACT_Press;
+  }
+
+  if (input_key == IK_Tilde && input_action == IACT_Release)
+  {
+	  input_key = IK_Tilde;
+	  input_action = IACT_Press;
   }
 
   return OnViewportInputDebugConsole(*global_debug_console, viewport, input_key,
@@ -77,32 +88,40 @@ DWORD WINAPI InitializeHook(void* arguments) {
   hook::set_base();
   HookFunction::RunAll();
   logger = new CLogger;
-  logger->Log("=====================\n Witcher 3 console enabler originally created by Karl Skomski. \n\n\n Modified by Hugo Holmqvist\n =====================");
-  logger->Log("-> For version 1.12");
 
-  global_game = hook::pattern("48 8B 05 ? ? ? ? 48 8D 4C 24 ? C6 44 24")
+  global_game = hook::pattern("48 8B 05 87 F1 FE 01 C6 44 24 30 01 89 4C 24 28")
                     .count(1)
                     .get(0)
                     .extract<CGame**>(3);
-  global_debug_console =
-      hook::pattern("48 89 05 ? ? ? ? EB 07 48 89 35 ? ? ? ? 48 8B 97")
+  global_debug_console = hook::pattern("48 89 05 ? ? ? ? EB 07 48 89 35 ? ? ? ? 48 8B")
           .count(1)
           .get(0)
           .extract<void**>(3);
 
-  while (*global_game == nullptr || *global_debug_console == nullptr) {
+  logger->Log("=====================\n Witcher 3 console enabler originally created by Karl Skomski. \n\n\n Modified by Hugo Holmqvist\n \n Credits to Sarcen for the fix for 1.21! \n =====================");
+
+  std::string w3Version = hook::pattern("48 8D 05 4E 75 7E 01").count(1).get(0).extract<char*>(3);
+  if (w3Version != "")
+  {
+	  w3Version = utils::Split(std::string(w3Version), ' ')[1];
+
+	  logger->Log("-> For version "+std::string(SOFTWARE_VERSION)+" (current version "+ w3Version +")");
+
+	  if (w3Version != std::string(SOFTWARE_VERSION))
+	  {
+		  std::string err = "You are running version " + w3Version + " but this software is for " + std::string(SOFTWARE_VERSION)+". The debug console might not work!";
+		  MessageBoxA(NULL, err.c_str(), "Debug Console: Wrong version", MB_OK | MB_ICONEXCLAMATION);
+	  }
+  }
+
+  while (*global_debug_console == nullptr) {
     Sleep(500);
   }
 
-  OnViewportInputDebugConsole =
-      hook::pattern("48 83 EC 28 48 8B 05 ? ? ? ? 0F B6 90")
+  OnViewportInputDebugConsole = hook::pattern("48 83 EC 28 48 8B 05 ? ? ? ? 0F B6 90")
           .count(1)
           .get(0)
           .get<OnViewportInputType>(0);
-  rtti_system = *hook::pattern("48 8B 0D ? ? ? ? 48 8B 5C 24 ? 48 83 C4 30")
-                     .count(1)
-                     .get(0)
-                     .extract<CRTTISystem**>(3);
 
   if (global_game)
 	  logger->Log("Game ptr valid.");
@@ -114,8 +133,8 @@ DWORD WINAPI InitializeHook(void* arguments) {
 	  logger->Log("Input ptr valid.");
 
   game_hook = new utils::VtableHook(*global_game);
-  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 134);
-
+  logger->Log("CGame has " + std::to_string(game_hook->NumFuncs()) + " virtual funcs");
+  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 136);
 
   return 1;
 }
@@ -130,6 +149,7 @@ void FinalizeHook() {
 
 int WINAPI DllMain(HINSTANCE instance, DWORD reason, PVOID reserved) {
   if (reason == DLL_PROCESS_ATTACH) {
+	//Sleep(1000);
     thread = CreateThread(nullptr, 0, InitializeHook, 0, 0, nullptr);
   } else if (reason == DLL_PROCESS_DETACH) {
     FinalizeHook();
