@@ -308,12 +308,12 @@ DWORD WINAPI InitializeHook(void* arguments) {
   hook::set_base();
   HookFunction::RunAll();
 
-  global_game = hook::pattern("48 8B 05 ? ? ? ? 48 8D 4C 24 ? C6 44 24")
+  global_game = hook::pattern("48 8B 05 87 F1 FE 01 C6 44 24 30 01 89 4C 24 28")
                     .count(1)
                     .get(0)
                     .extract<CGame**>(3);
   global_debug_console =
-      hook::pattern("48 89 05 ? ? ? ? EB 07 48 89 35 ? ? ? ? 48 8B 97")
+      hook::pattern("48 89 05 ? ? ? ? EB 07 48 89 35 ? ? ? ? 48 8B")
           .count(1)
           .get(0)
           .extract<void**>(3);
@@ -337,7 +337,7 @@ DWORD WINAPI InitializeHook(void* arguments) {
   // B8").count(1).get(0).extract<FileManager*>(3);
 
   game_hook = new utils::VtableHook(*global_game);
-  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 134);
+  game_hook->HookMethod(OnViewportInputDebugAlwaysHook, 136);
 
   // auto exe_path = GetExecutablePath();
   // exe_path += L"\\scriptplugins\\";
