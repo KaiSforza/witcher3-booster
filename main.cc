@@ -212,6 +212,11 @@ bool OnViewportInputDebugAlwaysHook(void* thisptr,
     input_action = IACT_Press;
   }
 
+  if (input_key == IK_Backslash && input_action == IACT_Release) {
+	  input_key = IK_Tilde;
+	  input_action = IACT_Press;
+  }
+
   return OnViewportInputDebugConsole(*global_debug_console, viewport, input_key,
                                      input_action, tick);
 }
@@ -308,7 +313,7 @@ DWORD WINAPI InitializeHook(void* arguments) {
   hook::set_base();
   HookFunction::RunAll();
 
-  global_game = hook::pattern("48 8B 05 87 F1 FE 01 C6 44 24 30 01 89 4C 24 28")
+  global_game = hook::pattern("48 8B 05 ? ? ? 01 C6 44 24 30 01 89 4C 24 28")
                     .count(1)
                     .get(0)
                     .extract<CGame**>(3);
